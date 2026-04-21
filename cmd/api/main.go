@@ -58,6 +58,26 @@ func main() {
 		}
 	}()
 
+	go func() {
+		if err := taskUsecase.GenerateRecurringTasks(ctx, 30); err != nil {
+			logger.Error("failed to generate initial tasks", "error", err)
+		}
+
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if err := taskUsecase.GenerateRecurringTasks(ctx, 30); err != nil {
+					logger.Error("failed to generate recurring tasks", "error", err)
+				}
+			}
+		}
+	}()
+
 	logger.Info("http server started", "addr", cfg.HTTPAddr)
 
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
